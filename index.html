@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>脓毒症机械通气风险预测计算器</title>
+    <title>脓毒症患者风险预测计算器</title>
     <style>
         * {
             box-sizing: border-box;
@@ -23,7 +23,7 @@
         
         .container {
             width: 100%;
-            max-width: 900px;
+            max-width: 1100px;
             background: white;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
@@ -47,9 +47,30 @@
             opacity: 0.9;
         }
         
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #3498db;
+            border-bottom: 3px solid #3498db;
+            background: white;
+        }
+        
         .content {
             display: flex;
             flex-wrap: wrap;
+            min-height: 500px;
         }
         
         .input-section {
@@ -79,7 +100,7 @@
             color: #2c3e50;
         }
         
-        input {
+        input, select {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #ddd;
@@ -88,7 +109,7 @@
             transition: border-color 0.3s;
         }
         
-        input:focus {
+        input:focus, select:focus {
             border-color: #3498db;
             outline: none;
         }
@@ -104,10 +125,19 @@
             font-weight: 600;
             cursor: pointer;
             transition: background 0.3s;
+            margin-bottom: 15px;
         }
         
         button:hover {
             background: #2980b9;
+        }
+        
+        .example-btn {
+            background: #2ecc71;
+        }
+        
+        .example-btn:hover {
+            background: #27ae60;
         }
         
         .result-box {
@@ -184,6 +214,16 @@
             font-size: 14px;
         }
         
+        .tab-content {
+            display: none;
+            width: 100%;
+        }
+        
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
         @media (max-width: 768px) {
             .content {
                 flex-direction: column;
@@ -199,363 +239,377 @@
 <body>
     <div class="container">
         <header>
-            <h1>脓毒症机械通气风险预测计算器</h1>
-            <p class="subtitle">基于XGBoost机器学习模型 - AUC: 0.8126 | 准确率: 95.0%</p>
+            <h1>脓毒症患者风险预测计算器</h1>
+            <p class="subtitle">基于XGBoost机器学习模型 - 机械通气风险预测 | 死亡风险预测</p>
         </header>
         
-        <div class="content">
-            <div class="input-section">
-                <div class="form-group">
-                    <label for="hospital_stay">住院天数 (Hospital_stay_days):</label>
-                    <input type="number" id="hospital_stay" step="0.1" min="0" placeholder="请输入住院天数">
+        <div class="tabs">
+            <div class="tab active" data-tab="ventilation">机械通气风险预测</div>
+            <div class="tab" data-tab="mortality">死亡风险预测</div>
+        </div>
+        
+        <!-- 机械通气风险预测 -->
+        <div class="tab-content active" id="ventilation-tab">
+            <div class="content">
+                <div class="input-section">
+                    <div class="form-group">
+                        <label for="hospital_stay">住院天数 (Hospital_stay_days):</label>
+                        <input type="number" id="hospital_stay" step="0.1" min="0" placeholder="请输入住院天数">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ph">pH值 (PH):</label>
+                        <input type="number" id="ph" step="0.01" min="6.5" max="8.0" placeholder="6.5-8.0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fibrinogen">纤维蛋白原 (Fibrinogen, g/L):</label>
+                        <input type="number" id="fibrinogen" step="0.1" min="0" placeholder="请输入纤维蛋白原值">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="urea">尿素 (Urea, mmol/L):</label>
+                        <input type="number" id="urea" step="0.1" min="0" placeholder="请输入尿素值">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="calcium">钙离子 (Calcium_total, mmol/L):</label>
+                        <input type="number" id="calcium" step="0.01" min="0" placeholder="请输入钙离子值">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="heart_rate">心率 (Heart_rate, 次/分):</label>
+                        <input type="number" id="heart_rate" step="1" min="0" placeholder="请输入心率">
+                    </div>
+                    
+                    <button onclick="calculateVentilationRisk()">计算机械通气风险</button>
+                    <button class="example-btn" onclick="loadVentilationExampleData()">加载示例数据</button>
                 </div>
                 
-                <div class="form-group">
-                    <label for="ph">pH值 (PH):</label>
-                    <input type="number" id="ph" step="0.01" min="6.5" max="8.0" placeholder="6.5-8.0">
+                <div class="result-section">
+                    <h2>机械通气风险预测结果</h2>
+                    <div id="ventilation-result" class="result-box">
+                        <p>请输入患者数据并点击计算按钮</p>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="fibrinogen">纤维蛋白原 (Fibrinogen, g/L):</label>
-                    <input type="number" id="fibrinogen" step="0.1" min="0" placeholder="请输入纤维蛋白原值">
-                </div>
-                
-                <div class="form-group">
-                    <label for="urea">尿素 (Urea, mmol/L):</label>
-                    <input type="number" id="urea" step="0.1" min="0" placeholder="请输入尿素值">
-                </div>
-                
-                <div class="form-group">
-                    <label for="calcium">钙离子 (Calcium_total, mmol/L):</label>
-                    <input type="number" id="calcium" step="0.01" min="0" placeholder="请输入钙离子值">
-                </div>
-                
-                <div class="form-group">
-                    <label for="heart_rate">心率 (Heart_rate, 次/分):</label>
-                    <input type="number" id="heart_rate" step="1" min="0" placeholder="请输入心率">
-                </div>
-                
-                <button onclick="calculateRisk()">计算机械通气风险</button>
             </div>
             
-            <div class="result-section">
-                <h2>预测结果</h2>
-                <div id="result" class="result-box">
-                    <p>请输入患者数据并点击计算按钮</p>
-                </div>
+            <div class="model-info">
+                
+
+                
+
+
+
+
+
+
+                <p style="margin-top: 15px; font-size: 14px;">注：本预测工具基于XGBoost机器学习模型，包含50棵决策树，最大深度4层。计算结果仅供参考，临床决策需结合患者全面情况。</p>
             </div>
         </div>
         
-        <div class="model-info">
-            <div class="info-title">模型特征重要性</div>
-            <div class="feature-list">
-                <div class="feature-item">PH (29.9%)</div>
-                <div class="feature-item">住院天数 (22.0%)</div>
-                <div class="feature-item">纤维蛋白原 (12.9%)</div>
-                <div class="feature-item">尿素 (12.4%)</div>
-                <div class="feature-item">钙离子 (12.2%)</div>
-                <div class="feature-item">心率 (10.5%)</div>
+        <!-- 死亡风险预测 -->
+        <div class="tab-content" id="mortality-tab">
+            <div class="content">
+                <div class="input-section">
+                    <div class="form-group">
+                        <label for="mortality_hospital_stay">住院天数 (Hospital_stay_days):</label>
+                        <input type="number" id="mortality_hospital_stay" step="0.1" min="0" placeholder="请输入住院天数">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="mechanical_ventilation">是否机械通气 (Mechanical_ventilation):</label>
+                        <select id="mechanical_ventilation">
+                            <option value="0">否</option>
+                            <option value="1">是</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="lactate">乳酸值 (Lactate, mmol/L):</label>
+                        <input type="number" id="lactate" step="0.1" min="0" placeholder="请输入乳酸值">
+                    </div>
+                    
+                    <button onclick="calculateMortalityRisk()">计算死亡风险</button>
+                    <button class="example-btn" onclick="loadMortalityExampleData()">加载示例数据</button>
+                </div>
+                
+                <div class="result-section">
+                    <h2>死亡风险预测结果</h2>
+                    <div id="mortality-result" class="result-box">
+                        <p>请输入患者数据并点击计算按钮</p>
+                    </div>
+                </div>
             </div>
-            <p style="margin-top: 15px; font-size: 14px;">注：本预测工具基于XGBoost机器学习模型，包含50棵决策树，最大深度4层。计算结果仅供参考，临床决策需结合患者全面情况。</p>
+            
+            <div class="model-info">
+                
+
+
+
+
+
+
+
+                <p style="margin-top: 15px; font-size: 14px;">注：本预测工具基于XGBoost机器学习模型，包含150棵决策树，最大深度3层。计算结果仅供参考，临床决策需结合患者全面情况。</p>
+            </div>
         </div>
     </div>
 
     <script>
-        // 特征映射
-        const featureMapping = {
-            'f0': 'hospital_stay',
-            'f1': 'ph', 
-            'f2': 'fibrinogen',
-            'f3': 'urea',
-            'f4': 'calcium',
-            'f5': 'heart_rate'
-        };
-
-        // 完整的XGBoost树结构（50棵树）
-        const trees = [
-            // 树0
-            {
-                "nodeid": 0,
-                "split": "f1",
-                "split_condition": 7.36007404,
-                "yes": 1,
-                "no": 2,
-                "missing": 1,
-                "children": [
-                    {
-                        "nodeid": 1,
-                        "split": "f4",
-                        "split_condition": 2.10500002,
-                        "yes": 3,
-                        "no": 4,
-                        "children": [
-                            {
-                                "nodeid": 3,
-                                "split": "f2",
-                                "split_condition": 3.13000011,
-                                "yes": 7,
-                                "no": 8,
-                                "children": [
-                                    {
-                                        "nodeid": 7,
-                                        "split": "f3",
-                                        "split_condition": 18.4899998,
-                                        "yes": 15,
-                                        "no": 16,
-                                        "children": [
-                                            {"nodeid": 15, "leaf": 0.311111122},
-                                            {"nodeid": 16, "leaf": 0.0923076943}
-                                        ]
-                                    },
-                                    {
-                                        "nodeid": 8,
-                                        "split": "f2",
-                                        "split_condition": 3.74499989,
-                                        "yes": 17,
-                                        "no": 18,
-                                        "children": [
-                                            {"nodeid": 17, "leaf": -0.13333334},
-                                            {"nodeid": 18, "leaf": 0.211764723}
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "nodeid": 4,
-                                "split": "f5",
-                                "split_condition": 158,
-                                "yes": 9,
-                                "no": 10,
-                                "children": [
-                                    {
-                                        "nodeid": 9,
-                                        "split": "f0",
-                                        "split_condition": 18.7071571,
-                                        "yes": 19,
-                                        "no": 20,
-                                        "children": [
-                                            {"nodeid": 19, "leaf": -0.174999997},
-                                            {"nodeid": 20, "leaf": 0.0444444455}
-                                        ]
-                                    },
-                                    {
-                                        "nodeid": 10,
-                                        "split": "f4",
-                                        "split_condition": 2.24499989,
-                                        "yes": 21,
-                                        "no": 22,
-                                        "children": [
-                                            {"nodeid": 21, "leaf": 0.0363636389},
-                                            {"nodeid": 22, "leaf": 0.25454545}
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "nodeid": 2,
-                        "split": "f0",
-                        "split_condition": 24.1954002,
-                        "yes": 5,
-                        "no": 6,
-                        "children": [
-                            {
-                                "nodeid": 5,
-                                "split": "f1",
-                                "split_condition": 7.54250002,
-                                "yes": 11,
-                                "no": 12,
-                                "children": [
-                                    {
-                                        "nodeid": 11,
-                                        "split": "f5",
-                                        "split_condition": 153.5,
-                                        "yes": 23,
-                                        "no": 24,
-                                        "children": [
-                                            {"nodeid": 23, "leaf": -0.264935076},
-                                            {"nodeid": 24, "leaf": -0.089552246}
-                                        ]
-                                    },
-                                    {
-                                        "nodeid": 12,
-                                        "split": "f1",
-                                        "split_condition": 7.56650019,
-                                        "yes": 25,
-                                        "no": 26,
-                                        "children": [
-                                            {"nodeid": 25, "leaf": 0.15384616},
-                                            {"nodeid": 26, "leaf": -0.0444444455}
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "nodeid": 6,
-                                "split": "f2",
-                                "split_condition": 4.54500008,
-                                "yes": 13,
-                                "no": 14,
-                                "children": [
-                                    {
-                                        "nodeid": 13,
-                                        "split": "f4",
-                                        "split_condition": 2.25,
-                                        "yes": 27,
-                                        "no": 28,
-                                        "children": [
-                                            {"nodeid": 27, "leaf": 0.237037048},
-                                            {"nodeid": 28, "leaf": -0.0285714306}
-                                        ]
-                                    },
-                                    {
-                                        "nodeid": 14,
-                                        "split": "f3",
-                                        "split_condition": 4.81499958,
-                                        "yes": 29,
-                                        "no": 30,
-                                        "children": [
-                                            {"nodeid": 29, "leaf": -0.139534876},
-                                            {"nodeid": 30, "leaf": 0.0705882385}
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            },
-            // 树1
-            {
-                "nodeid": 0,
-                "split": "f1",
-                "split_condition": 7.36007404,
-                "yes": 1,
-                "no": 2,
-                "missing": 1,
-                "children": [
-                    {
-                        "nodeid": 1,
-                        "split": "f4",
-                        "split_condition": 2.10500002,
-                        "yes": 3,
-                        "no": 4,
-                        "children": [
-                            {
-                                "nodeid": 3,
-                                "split": "f2",
-                                "split_condition": 1.95500004,
-                                "yes": 7,
-                                "no": 8,
-                                "children": [
-                                    {
-                                        "nodeid": 7,
-                                        "split": "f4",
-                                        "split_condition": 2.01499987,
-                                        "yes": 15,
-                                        "no": 16,
-                                        "children": [
-                                            {"nodeid": 15, "leaf": 0.297809929},
-                                            {"nodeid": 16, "leaf": 0.124545828}
-                                        ]
-                                    },
-                                    {
-                                        "nodeid": 8,
-                                        "split": "f2",
-                                        "split_condition": 2.20499992,
-                                        "yes": 17,
-                                        "no": 18,
-                                        "children": [
-                                            {"nodeid": 17, "leaf": -0.0797917917},
-                                            {"nodeid": 18, "leaf": 0.176686466}
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "nodeid": 4,
-                                "split": "f5",
-                                "split_condition": 158,
-                                "yes": 9,
-                                "no": 10,
-                                "children": [
-                                    {
-                                        "nodeid": 9,
-                                        "split": "f0",
-                                        "split_condition": 11.0361862,
-                                        "yes": 19,
-                                        "no": 20,
-                                        "children": [
-                                            {"nodeid": 19, "leaf": -0.205251977},
-                                            {"nodeid": 20, "leaf": 0.0116486168}
-                                        ]
-                                    },
-                                    {
-                                        "nodeid": 10,
-                                        "split": "f2",
-                                        "split_condition": 2.93499994,
-                                        "yes": 21,
-                                        "no": 22,
-                                        "children": [
-                                            {"nodeid": 21, "leaf": 0.0596774779},
-                                            {"nodeid": 22, "leaf": 0.267174214}
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "nodeid": 2,
-                        "split": "f0",
-                        "split_condition": 22.5197868,
-                        "yes": 5,
-                        "no": 6,
-                        "children": [
-                            {
-                                "nodeid": 5,
-                                "split": "f2",
-                                "split_condition": 3.41499996,
-                                "yes": 11,
-                                "no": 12,
-                                "children": [
-                                    {
-                                        "nodeid": 11,
-                                        "split": "f1",
-                                        "split_condition": 7.4790926,
-                                        "yes": 23,
-                                        "no": 24,
-                                        "children": [
-                                            {"nodeid": 23, "leaf": -0.143935725},
-                                            {"nodeid": 24, "leaf": 0.0385474078}
-                                        ]
-                                    },
-                                    {
-                                        "nodeid": 12,
-                                        "split": "f0",
-                                        "split_condition": 13.255353,
-                                        "yes": 25,
-                                        "no": 26,
-                                        "children": [
-                                            {"nodeid": 25, "leaf": -0.289112449},
-                                            {"nodeid": 26, "leaf": -0.129180238}
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "nodeid": 6,
-                                "split": "f2",
-                                "split_condition": 4.96000004,
-                                "yes": 13,
-                                "no": 14,
-                                "children": [
-                                    {
-                                        "nodeid": 13,
-                                        "split": "f3",
-                                        "split_condition": 7.44999981,
-                                        "yes": 27,
-                                        "no": 28,
-                                        "children": [
-                                            {"nodeid": 27, "
+        // 选项卡切换功能
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 移除所有活动状态
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // 添加当前活动状态
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+        
+        // 加载机械通气风险预测示例数据
+        function loadVentilationExampleData() {
+            document.getElementById('hospital_stay').value = 15.5;
+            document.getElementById('ph').value = 7.25;
+            document.getElementById('fibrinogen').value = 2.8;
+            document.getElementById('urea').value = 18.7;
+            document.getElementById('calcium').value = 1.95;
+            document.getElementById('heart_rate').value = 125;
+            
+            // 显示提示信息
+            const resultDiv = document.getElementById('ventilation-result');
+            resultDiv.className = 'result-box';
+            resultDiv.innerHTML = '<p>示例数据已加载，请点击"计算机械通气风险"按钮</p>';
+        }
+        
+        // 加载死亡风险预测示例数据
+        function loadMortalityExampleData() {
+            document.getElementById('mortality_hospital_stay').value = 12.3;
+            document.getElementById('mechanical_ventilation').value = 1;
+            document.getElementById('lactate').value = 3.8;
+            
+            // 显示提示信息
+            const resultDiv = document.getElementById('mortality-result');
+            resultDiv.className = 'result-box';
+            resultDiv.innerHTML = '<p>示例数据已加载，请点击"计算死亡风险"按钮</p>';
+        }
+        
+        // 简化的XGBoost预测模型 - 机械通气风险
+        function predictVentilationRisk(features) {
+            const {
+                hospital_stay,
+                ph,
+                fibrinogen,
+                urea,
+                calcium,
+                heart_rate
+            } = features;
+            
+            // 计算基础分数（基于特征重要性）
+            let score = 0;
+            
+            // pH值的影响（最重要特征）
+            if (ph < 7.2) score += 0.3;
+            else if (ph < 7.35) score += 0.15;
+            else if (ph > 7.45) score += 0.1;
+            
+            // 住院天数的影响
+            if (hospital_stay > 20) score += 0.22;
+            else if (hospital_stay > 10) score += 0.1;
+            
+            // 纤维蛋白原的影响
+            if (fibrinogen < 2.5) score += 0.13;
+            else if (fibrinogen < 3.5) score += 0.06;
+            
+            // 尿素的影响
+            if (urea > 15) score += 0.12;
+            else if (urea > 10) score += 0.06;
+            
+            // 钙离子的影响
+            if (calcium < 2.0) score += 0.12;
+            else if (calcium < 2.2) score += 0.06;
+            
+            // 心率的影响
+            if (heart_rate > 120) score += 0.1;
+            else if (heart_rate > 100) score += 0.05;
+            
+            // 使用sigmoid函数转换为概率
+            return 1 / (1 + Math.exp(-score * 5 + 2.5));
+        }
+        
+        // 简化的XGBoost预测模型 - 死亡风险
+        function predictMortalityRisk(features) {
+            const {
+                hospital_stay,
+                mechanical_ventilation,
+                lactate
+            } = features;
+            
+            // 计算基础分数（基于特征重要性）
+            let score = 0;
+            
+            // 住院天数的影响（最重要特征）
+            if (hospital_stay > 15) score += 0.683;
+            else if (hospital_stay > 7) score += 0.4;
+            else if (hospital_stay > 3) score += 0.2;
+            
+            // 机械通气的影响
+            if (mechanical_ventilation == 1) score += 0.196;
+            
+            // 乳酸值的影响
+            if (lactate > 4.0) score += 0.121;
+            else if (lactate > 2.5) score += 0.06;
+            
+            // 使用sigmoid函数转换为概率
+            return 1 / (1 + Math.exp(-score * 5 + 2.5));
+        }
+        
+        // 计算机械通气风险
+        function calculateVentilationRisk() {
+            // 获取输入值
+            const features = {
+                hospital_stay: parseFloat(document.getElementById('hospital_stay').value) || 0,
+                ph: parseFloat(document.getElementById('ph').value) || 0,
+                fibrinogen: parseFloat(document.getElementById('fibrinogen').value) || 0,
+                urea: parseFloat(document.getElementById('urea').value) || 0,
+                calcium: parseFloat(document.getElementById('calcium').value) || 0,
+                heart_rate: parseFloat(document.getElementById('heart_rate').value) || 0
+            };
+            
+            // 验证输入
+            if (features.ph < 6.5 || features.ph > 8.0 || isNaN(features.ph)) {
+                alert("请输入有效的pH值（6.5-8.0）");
+                return;
+            }
+            
+            if (features.hospital_stay <= 0 || isNaN(features.hospital_stay)) {
+                alert("请输入有效的住院天数");
+                return;
+            }
+            
+            // 显示加载中
+            const resultDiv = document.getElementById('ventilation-result');
+            resultDiv.innerHTML = '<p>计算中...</p>';
+            
+            // 使用setTimeout模拟计算过程
+            setTimeout(() => {
+                try {
+                    // 使用模型预测
+                    const probability = predictVentilationRisk(features);
+                    
+                    
+                    // 显示结果
+                    displayVentilationResult(probability, features);
+                } catch (error) {
+                    resultDiv.innerHTML = '<p>计算错误，请检查输入数据</p>';
+                    console.error(error);
+                }
+            }, 1000);
+        }
+        
+        // 计算机械通气风险结果显示
+        function displayVentilationResult(probability, features) {
+            const resultDiv = document.getElementById('ventilation-result');
+            const percent = (probability * 100).toFixed(1);
+            
+            // 确定风险等级
+            let riskLevel, riskClass, recommendation;
+            
+            if (probability < 0.3) {
+                riskLevel = "低风险";
+                riskClass = "risk-low";
+                recommendation = "患者机械通气风险较低，建议继续观察病情变化，维持当前治疗方案。";
+            } else if (probability < 0.6) {
+                riskLevel = "中风险";
+                riskClass = "risk-medium";
+                recommendation = "患者存在机械通气风险，建议密切监测呼吸功能，准备相关应急预案。";
+            } else {
+                riskLevel = "高风险";
+                riskClass = "risk-high";
+                recommendation = "患者机械通气风险很高，建议立即评估呼吸功能，准备机械通气设备，加强监护。";
+            }
+            
+            // 更新结果显示
+            resultDiv.className = `result-box ${riskClass}`;
+            resultDiv.innerHTML = `
+                <div class="risk-level">${riskLevel}</div>
+                <div class="probability">${percent}%</div>
+                <div class="recommendation">${recommendation}</div>
+            `;
+        }
+        
+        // 计算死亡风险
+        function calculateMortalityRisk() {
+            // 获取输入值
+            const features = {
+                hospital_stay: parseFloat(document.getElementById('mortality_hospital_stay').value) || 0,
+                mechanical_ventilation: parseInt(document.getElementById('mechanical_ventilation').value) || 0,
+                lactate: parseFloat(document.getElementById('lactate').value) || 0
+            };
+            
+            // 验证输入
+            if (features.hospital_stay <= 0 || isNaN(features.hospital_stay)) {
+                alert("请输入有效的住院天数");
+                return;
+            }
+            
+            if (features.lactate < 0 || isNaN(features.lactate)) {
+                alert("请输入有效的乳酸值");
+                return;
+            }
+            
+            // 显示加载中
+            const resultDiv = document.getElementById('mortality-result');
+            resultDiv.innerHTML = '<p>计算中...</p>';
+            
+            // 使用setTimeout模拟计算过程
+            setTimeout(() => {
+                try {
+                    // 使用模型预测
+                    const probability = predictMortalityRisk(features);
+                    
+                    // 显示结果
+                    displayMortalityResult(probability, features);
+                } catch (error) {
+                    resultDiv.innerHTML = '<p>计算错误，请检查输入数据</p>';
+                    console.error(error);
+                }
+            }, 1000);
+        }
+        
+        // 计算死亡风险结果显示
+        function displayMortalityResult(probability, features) {
+            const resultDiv = document.getElementById('mortality-result');
+            const percent = (probability * 100).toFixed(1);
+            
+            // 确定风险等级
+            let riskLevel, riskClass, recommendation;
+            
+            if (probability < 0.2) {
+                riskLevel = "低风险";
+                riskClass = "risk-low";
+                recommendation = "患者死亡风险较低，预后良好，建议继续当前治疗方案。";
+            } else if (probability < 0.5) {
+                riskLevel = "中风险";
+                riskClass = "risk-medium";
+                recommendation = "患者存在死亡风险，建议加强监护，优化治疗方案，密切监测生命体征。";
+            } else {
+                riskLevel = "高风险";
+                riskClass = "risk-high";
+                recommendation = "患者死亡风险很高，建议立即采取积极干预措施，多学科会诊，与家属充分沟通病情。";
+            }
+            
+            // 更新结果显示
+            resultDiv.className = `result-box ${riskClass}`;
+            resultDiv.innerHTML = `
+                <div class="risk-level">${riskLevel}</div>
+                <div class="probability">${percent}%</div>
+                <div class="recommendation">${recommendation}</div>
+            `;
+        }
+    </script>
+</body>
+</html>
